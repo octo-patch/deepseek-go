@@ -93,7 +93,7 @@ Before using the library, ensure you have:
 	Usage: `Model: deepseek.OpenRouterDeepSeekR1` (and other `OpenRouterDeepSeek*` constants)
 
 - **MiniMax** <br/>
-	Models: `deepseek.MiniMaxM3`, `deepseek.MiniMaxM2_7` <br/>
+	Models: `deepseek.MiniMaxM3_1Flash` (recommended), `deepseek.MiniMaxM3` <br/>
 	OpenAI-compatible API: `deepseek.MiniMaxBaseURL` (global), `deepseek.MiniMaxCNBaseURL` (China) <br/>
 	Anthropic-compatible API: `deepseek.MiniMaxAnthropicAPIBaseURL` (global), `deepseek.MiniMaxCNAnthropicAPIBaseURL` (China) <br/>
 	When using `NewAnthropicClient`, set `Path` to `"/v1/messages"` with an Anthropic-compatible API base URL.
@@ -101,6 +101,54 @@ Before using the library, ensure you have:
 - **Ollama Support** <br/>
 	Please read [Ollama Support](#ollama) for more info about this!
 
+
+### MiniMax requests
+
+Use `MiniMaxM3_1Flash` for new MiniMax requests, or select `MiniMaxM3` explicitly.
+The SDK requires a model ID and preserves explicit legacy/custom IDs;
+`MiniMaxM2_7` remains available for source compatibility. `ListAllModels` returns
+raw provider discovery data, not a curated model picker.
+
+```go
+client := deepseek.NewClient(os.Getenv("MINIMAX_API_KEY"), deepseek.MiniMaxBaseURL)
+request := &deepseek.ChatCompletionRequest{
+    Model: deepseek.MiniMaxM3_1Flash,
+    Thinking: &deepseek.ThinkingConfig{Type: "adaptive"},
+    ReasoningEffort: "max",
+    ExtraFields: map[string]interface{}{"max_completion_tokens": 4096},
+    Messages: []deepseek.ChatCompletionMessage{
+        {Role: deepseek.ChatMessageRoleUser, Content: "Hello"},
+    },
+}
+response, err := client.CreateChatCompletion(context.Background(), request)
+```
+
+For the Anthropic-compatible API, set `BaseURL` to
+`MiniMaxAnthropicAPIBaseURL`, `Path` to `"/v1/messages"`, and use
+`AnthropicRequest{Model: deepseek.MiniMaxM3_1Flash, MaxTokens: 4096, ...}`.
+Use `Thinking: &deepseek.AnthropicThinkingConfig{Type: "adaptive"}` and
+`OutputConfig: &deepseek.AnthropicOutputConfig{Effort: "max"}` for explicit
+thinking controls. Use the corresponding `MiniMaxCN*` URL constant for China.
+
+Flash always thinks. Omit thinking or use `adaptive`; `disabled` and effort
+`none` are rejected by the service. The supported effort values are `low`,
+`medium`, `high`, `xhigh`, and `max` (the default). Do not send `service_tier`
+or `reasoning_split: false` for Flash. Use the explicit `Thinking` field rather
+than the legacy `EnableThinking` flag, which emits `enabled`.
+M3 accepts `adaptive` and `disabled`, ignores effort, and defaults to thinking
+on for Chat Completions and off for the Anthropic-compatible API.
+These are direct API contracts; gateway model IDs and parameters follow the
+gateway's own documentation.
+
+In tool follow-ups, preserve the complete assistant message, including
+`ReasoningContent`, `Content` (including any `<think>` tags), and `ToolCalls`.
+For Anthropic messages, replay the complete response `Content` list unchanged,
+including thinking and tool-use blocks. Image input uses the existing
+`CreateChatCompletionWithImage` methods or Anthropic image content blocks.
+
+See the official [OpenAI-compatible API](https://platform.minimax.io/docs/api-reference/text-openai-api.md)
+and [Anthropic-compatible API](https://platform.minimax.io/docs/api-reference/text-anthropic-api.md)
+contracts for details.
 
 ### Example for chatting with deepseek
 
@@ -181,8 +229,8 @@ func main() {
 	request := &deepseek.ChatCompletionRequest{
 		Model: deepseek.AzureDeepSeekR1,
 		// Model: deepseek.OpenRouterDeepSeekR1,
+		// Model: deepseek.MiniMaxM3_1Flash,
 		// Model: deepseek.MiniMaxM3,
-		// Model: deepseek.MiniMaxM2_7,
 		Messages: []deepseek.ChatCompletionMessage{
 			{Role: deepseek.ChatMessageRoleUser, Content: "Which is the tallest mountain in the world?"},
 		},

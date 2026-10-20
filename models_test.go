@@ -20,6 +20,7 @@ func (f requestCaptureFunc) Do(req *http.Request) (*http.Response, error) {
 }
 
 func TestMiniMaxProviderConstantsAndEndpoints(t *testing.T) {
+	require.Equal(t, "MiniMax-M3.1-Flash", deepseek.MiniMaxM3_1Flash)
 	require.Equal(t, "MiniMax-M3", deepseek.MiniMaxM3)
 	require.Equal(t, "MiniMax-M2.7", deepseek.MiniMaxM2_7)
 
